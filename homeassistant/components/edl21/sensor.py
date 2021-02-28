@@ -19,28 +19,22 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_registry import async_get_registry
 from homeassistant.helpers.typing import Optional
 from homeassistant.util.dt import utcnow
+from .const import DOMAIN, CONF_REFRESH, CONF_SERIAL
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "edl21"
-CONF_SERIAL_PORT = "serial_port"
 ICON_POWER = "mdi:flash"
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 SIGNAL_EDL21_TELEGRAM = "edl21_telegram"
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_SERIAL_PORT): cv.string,
-        vol.Optional(CONF_NAME, default=""): cv.string,
-    },
-)
 
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the EDL21 sensor."""
-    hass.data[DOMAIN] = EDL21(hass, config, async_add_entities)
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Add an EDL21 entry."""
+    # Add the needed sensors to hass
+    hass.data[DOMAIN] = EDL21(hass, entry, async_add_entities)
     await hass.data[DOMAIN].connect()
 
+    # Check if api can be reached and site is active
+    # try except
 
 class EDL21:
     """EDL21 handles telegrams sent by a compatible smart meter."""
@@ -112,13 +106,14 @@ class EDL21:
         "129-129:199.130.5*255",  # Iskraemeco: Public Key
     }
 
-    def __init__(self, hass, config, async_add_entities) -> None:
+    def __init__(self, hass, entry, async_add_entities) -> None:
         """Initialize an EDL21 object."""
         self._registered_obis = set()
         self._hass = hass
+        self._min_time_between_updates = timedelta(seconds=entry["refreshtime"])
         self._async_add_entities = async_add_entities
-        self._name = config[CONF_NAME]
-        self._proto = SmlProtocol(config[CONF_SERIAL_PORT])
+        self._name = entry[CONF_NAME]
+        self._proto = SmlProtocol(entry[CONF_SERIAL_PORT])
         self._proto.add_listener(self.event, ["SmlGetListResponse"])
 
     async def connect(self):
@@ -155,7 +150,7 @@ class EDL21:
                     if self._name:
                         name = f"{self._name}: {name}"
                     new_entities.append(
-                        EDL21Entity(electricity_id, obis, name, telegram)
+                        EDL21Entity(electricity_id, obis, name, self._min_time_between_updates, telegram)
                     )
                     self._registered_obis.add((electricity_id, obis))
                 elif obis not in self._OBIS_BLACKLIST:
@@ -196,14 +191,14 @@ class EDL21:
 class EDL21Entity(Entity):
     """Entity reading values from EDL21 telegram."""
 
-    def __init__(self, electricity_id, obis, name, telegram):
+    def __init__(self, electricity_id, obis, name, min_time, telegram):
         """Initialize an EDL21Entity."""
         self._electricity_id = electricity_id
         self._obis = obis
         self._name = name
         self._unique_id = f"{electricity_id}_{obis}"
         self._telegram = telegram
-        self._min_time = MIN_TIME_BETWEEN_UPDATES
+        self._min_time = min_time
         self._last_update = utcnow()
         self._state_attrs = {
             "status": "status",

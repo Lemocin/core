@@ -1,0 +1,22 @@
+{
+    "config": {
+      "title": "EDL21 SML Meter",
+      "step": {
+        "user": {
+          "title": "Define your connection with the SML compatible smart meters",
+          "data": {
+            "serial": "The ip-address of your Solaredge inverter",
+            "name": "The prefix to be used for your SolarEdge sensors",
+            "scan_interval": "The polling frequentie of the modbus registers in seconds"
+          }
+        }
+      },
+      "error": {
+        "already_configured": "Device is already configured"
+      },
+      "abort": {
+        "already_configured": "Device is already configured"
+      }
+    }
+  }
+  

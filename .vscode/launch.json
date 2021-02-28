@@ -37,7 +37,7 @@
       "type": "python",
       "request": "attach",
       "port": 5678,
-      "host": "homeassistant.local",
+      "host": "homeassistant",
       "pathMappings": [
         {
           "localRoot": "${workspaceFolder}",
